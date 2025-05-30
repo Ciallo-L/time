@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时间穿梭器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6C5CE7',
+                        secondary: '#00D2D3',
+                        accent: '#FDCB6E',
+                        dark: '#2D3436',
+                        light: '#FFFFFF',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                },
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .bg-gradient-time {
+                background: linear-gradient(135deg, #6C5CE7 0%, #00D2D3 100%);
+            }
+            .progress-value {
+                transition: width 1s linear;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- 顶部导航栏 -->
+    <header class="bg-gradient-time text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-clock-o text-2xl text-accent"></i>
+            </div>
+            <nav>
+                <ul class="flex space-x-6">
+                    <li><a href="03.html" class="hover:text-accent transition-colors duration-300"><i class="fa fa-cog mr-1"></i>赞助</a></li>
+                    <li><a href="02.html" class="hover:text-accent transition-colors duration-300"><i class="fa fa-cog mr-1"></i>设置</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden transform transition-all duration-500 hover:shadow-2xl">
+            <!-- 时间穿梭器标题区域 -->
+            <div class="bg-gradient-time p-6 text-center text-white">
+                <h2 class="text-3xl font-bold mb-2 text-shadow">时间穿梭器</h2>
+            </div>
+            
+            <!-- 时间穿梭控制区域 -->
+            <div class="p-8 space-y-8">
+                <!-- 时间选择区域 -->
+                <div class="space-y-4">
+                    <label for="time-select" class="block text-lg font-medium text-gray-700">选择穿梭时间</label>
+                    <div class="relative">
+                        <select id="time-select" class="block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-lg appearance-none bg-white border shadow-sm">
+                            <option value="10">10秒</option>
+                            <option value="60">1分钟</option>
+                            <option value="31536000">1年</option>
+                            <option value="custom">自定义时间...</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <i class="fa fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- 自定义时间输入框 (默认隐藏) -->
+                    <div id="custom-time-container" class="hidden space-y-2">
+                        <div class="flex items-center space-x-2">
+                            <input type="number" id="custom-time" class="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="输入时间值">
+                            <select id="custom-time-unit" class="block px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+                                <option value="seconds">秒</option>
+                                <option value="minutes">分钟</option>
+                                <option value="hours">小时</option>
+                                <option value="days">天</option>
+                                <option value="years">年</option>
+                            </select>
+                        </div>
+                        <p class="text-sm text-gray-500 italic"><i class="fa fa-info-circle mr-1"></i>注意：过大的时间可能导致系统崩溃</p>
+                    </div>
+                </div>
+                
+                <!-- 穿梭进度条区域 -->
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <label for="time-progress" class="block text-lg font-medium text-gray-700">穿梭进度</label>
+                        <span id="time-remaining" class="text-lg font-medium text-primary">准备就绪</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-6">
+                        <div id="time-progress" class="bg-gradient-to-r from-primary to-secondary h-6 rounded-full progress-value" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <!-- 当前时间显示 -->
+                <div class="text-center">
+                    <p id="current-time" class="text-gray-600 font-medium"></p>
+                </div>
+                
+                <!-- 穿梭按钮区域 -->
+                <div class="flex justify-center space-x-4">
+                    <button id="start-travel" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-300 transform hover:scale-105">
+                        <i class="fa fa-rocket mr-2"></i>开始穿梭
+                    </button>
+                    <button id="accelerate-time" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-accent hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent transition-all duration-300 transform hover:scale-105">
+                        <i class="fa fa-bolt mr-2"></i>加速时间
+                    </button>
+                </div>
+                
+                <!-- 穿梭结果区域 -->
+                <div id="result-container" class="hidden text-center py-6 px-4 rounded-lg bg-gray-50 border border-gray-200">
+                    <div id="result-icon" class="text-5xl mb-4 text-primary"></div>
+                    <h3 id="result-title" class="text-xl font-bold text-gray-800 mb-2"></h3>
+                    <p id="result-message" class="text-lg text-gray-600"></p>
+                </div>
+            </div>
+        </div>
+        
+    <!-- 模态框 -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
+            <div class="text-center mb-6">
+                <div id="modal-icon" class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent/20 text-accent mb-4">
+                    <i class="fa fa-ban text-3xl"></i>
+                </div>
+                <h3 id="modal-title" class="text-2xl font-bold text-gray-800">权限不足</h3>
+            </div>
+            <p id="modal-message" class="text-gray-600 mb-6 text-center">未拥有时间权柄，联系作者V他50可以换取时间权柄</p>
+            <div class="flex justify-center">
+                <button id="close-modal" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-300">
+                    "我知道了"
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM元素
+        const timeSelect = document.getElementById('time-select');
+        const customTimeContainer = document.getElementById('custom-time-container');
+        const customTimeInput = document.getElementById('custom-time');
+        const customTimeUnit = document.getElementById('custom-time-unit');
+        const startTravelBtn = document.getElementById('start-travel');
+        const accelerateTimeBtn = document.getElementById('accelerate-time');
+        const timeProgress = document.getElementById('time-progress');
+        const timeRemaining = document.getElementById('time-remaining');
+        const resultContainer = document.getElementById('result-container');
+        const resultIcon = document.getElementById('result-icon');
+        const resultTitle = document.getElementById('result-title');
+        const resultMessage = document.getElementById('result-message');
+        const modal = document.getElementById('modal');
+        const modalContent = document.getElementById('modal-content');
+        const closeModalBtn = document.getElementById('close-modal');
+        const modalIcon = document.getElementById('modal-icon');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const currentTimeElement = document.getElementById('current-time');
+
+        // 时间转换函数
+        function convertToSeconds(value, unit) {
+            switch(unit) {
+                case 'seconds': return value;
+                case 'minutes': return value * 60;
+                case 'hours': return value * 60 * 60;
+                case 'days': return value * 60 * 60 * 24;
+                case 'years': return value * 60 * 60 * 24 * 365;
+                default: return value;
+            }
+        }
+
+        // 格式化时间显示
+        function formatTime(seconds) {
+            if (seconds < 60) return `${seconds}秒`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}分${seconds % 60}秒`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}时${Math.floor((seconds % 3600) / 60)}分${seconds % 60}秒`;
+            if (seconds < 31536000) return `${Math.floor(seconds / 86400)}天${Math.floor((seconds % 86400) / 3600)}时${Math.floor((seconds % 3600) / 60)}分`;
+            return `${Math.floor(seconds / 31536000)}年${Math.floor((seconds % 31536000) / 86400)}天`;
+        }
+
+        // 格式化时间单位显示
+        function formatTimeUnit(value, unit) {
+            if (value === 1) {
+                switch(unit) {
+                    case 'seconds': return '1秒';
+                    case 'minutes': return '1分钟';
+                    case 'hours': return '1小时';
+                    case 'days': return '1天';
+                    case 'years': return '1年';
+                    default: return value + unit;
+                }
+            } else {
+                switch(unit) {
+                    case 'seconds': return `${value}秒`;
+                    case 'minutes': return `${value}分钟`;
+                    case 'hours': return `${value}小时`;
+                    case 'days': return `${value}天`;
+                    case 'years': return `${value}年`;
+                    default: return value + unit;
+                }
+            }
+        }
+
+        // 穿梭到未来的时间显示
+        function formatFutureTime(seconds) {
+            const now = new Date();
+            const future = new Date(now.getTime() + seconds * 1000);
+            
+            // 格式化日期部分
+            let datePart = `${future.getFullYear()}年${future.getMonth() + 1}月${future.getDate()}日`;
+            
+            // 格式化时间部分
+            let timePart = [
+                String(future.getHours()).padStart(2, '0'),
+                String(future.getMinutes()).padStart(2, '0'),
+                String(future.getSeconds()).padStart(2, '0')
+            ].join(':');
+            
+            return `${datePart} ${timePart}`;
+        }
+
+        // 更新当前时间显示
+        function updateCurrentTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            currentTimeElement.textContent = `当前时间: ${year}年${month}月${day}日 ${hours}:${minutes}:${seconds}`;
+        }
+
+        // 显示/隐藏自定义时间输入框
+        timeSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customTimeContainer.classList.remove('hidden');
+                customTimeInput.focus();
+            } else {
+                customTimeContainer.classList.add('hidden');
+            }
+        });
+
+        // 开始穿梭
+        let countdownInterval;
+        let totalSeconds = 0;
+        let remainingSeconds = 0;
+        let isTraveling = false;
+        let selectedTimeText = '';
+
+        startTravelBtn.addEventListener('click', function() {
+            // 重置状态
+            clearInterval(countdownInterval);
+            timeProgress.style.width = '0%';
+            resultContainer.classList.add('hidden');
+            this.disabled = true;
+            this.classList.add('opacity-70', 'cursor-not-allowed');
+            timeSelect.disabled = true;
+            customTimeInput.disabled = true;
+            customTimeUnit.disabled = true;
+            isTraveling = true;
+            
+            // 获取选择的时间
+            if (timeSelect.value === 'custom') {
+                const value = parseFloat(customTimeInput.value) || 0;
+                const unit = customTimeUnit.value;
+                totalSeconds = convertToSeconds(value, unit);
+                selectedTimeText = formatTimeUnit(value, unit);
+            } else {
+                totalSeconds = parseInt(timeSelect.value);
+                switch(timeSelect.value) {
+                    case '10': selectedTimeText = '10秒'; break;
+                    case '60': selectedTimeText = '1分钟'; break;
+                    case '31536000': selectedTimeText = '1年'; break;
+                    default: selectedTimeText = formatTime(totalSeconds);
+                }
+            }
+            
+            // 检查时间是否有效
+            if (totalSeconds <= 0) {
+                alert('请输入有效的时间值');
+                resetTravel();
+                return;
+            }
+            
+            remainingSeconds = totalSeconds;
+            updateTimeDisplay();
+            
+            // 开始倒计时
+            countdownInterval = setInterval(function() {
+                remainingSeconds--;
+                updateTimeDisplay();
+                
+                if (remainingSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    showResult();
+                    resetTravel();
+                }
+            }, 1000);
+        });
+
+        // 更新时间显示
+        function updateTimeDisplay() {
+            const progressPercentage = ((totalSeconds - remainingSeconds) / totalSeconds) * 100;
+            timeProgress.style.width = `${progressPercentage}%`;
+            timeRemaining.textContent = `剩余时间: ${formatTime(remainingSeconds)}`;
+        }
+
+        // 显示穿梭结果 - 仅提示穿梭到多少后
+        function showResult() {
+            resultContainer.classList.remove('hidden');
+            resultIcon.innerHTML = '<i class="fa fa-check-circle"></i>';
+            resultTitle.textContent = '穿梭成功';
+            
+            // 生成友好的时间差描述
+            let timeDifference = '';
+            if (totalSeconds < 60) {
+                timeDifference = `${totalSeconds}秒`;
+            } else if (totalSeconds < 3600) {
+                timeDifference = `${Math.floor(totalSeconds / 60)}分钟${totalSeconds % 60}秒`;
+            } else if (totalSeconds < 86400) {
+                timeDifference = `${Math.floor(totalSeconds / 3600)}小时${Math.floor((totalSeconds % 3600) / 60)}分钟`;
+            } else if (totalSeconds < 31536000) {
+                timeDifference = `${Math.floor(totalSeconds / 86400)}天${Math.floor((totalSeconds % 86400) / 3600)}小时`;
+            } else {
+                timeDifference = `${Math.floor(totalSeconds / 31536000)}年${Math.floor((totalSeconds % 31536000) / 86400)}天`;
+            }
+            
+            // 仅显示穿梭到多少后，不显示具体时间
+            resultMessage.textContent = `你已成功穿梭到${timeDifference}后！`;
+            
+            // 添加动画效果
+            resultContainer.classList.add('animate-pulse-slow');
+            setTimeout(() => {
+                resultContainer.classList.remove('animate-pulse-slow');
+            }, 3000);
+        }
+
+        // 重置穿梭状态
+        function resetTravel() {
+            setTimeout(() => {
+                startTravelBtn.disabled = false;
+                startTravelBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+                timeSelect.disabled = false;
+                customTimeInput.disabled = false;
+                customTimeUnit.disabled = false;
+                timeRemaining.textContent = '准备就绪';
+                isTraveling = false;
+            }, 3000);
+        }
+
+        // 加速时间按钮
+        accelerateTimeBtn.addEventListener('click', function() {
+            if (!isTraveling) {
+                showModal('提示', '请先开始时间穿梭', 'fa-info-circle', 'bg-blue-100 text-blue-500');
+            } else {
+                // 显示模态框
+                showModal('权限不足', '未拥有时间权柄，联系作者V他50可以换取时间权柄', 'fa-ban', 'bg-accent/20 text-accent');
+            }
+        });
+
+        // 显示模态框
+        function showModal(title, message, iconClass, iconStyle) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalIcon.innerHTML = `<i class="fa ${iconClass} text-3xl"></i>`;
+            modalIcon.className = `inline-flex items-center justify-center w-16 h-16 rounded-full ${iconStyle} mb-4`;
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        // 关闭模态框
+        closeModalBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        function closeModal() {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // 页面加载动画
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.classList.add('opacity-0');
+            setTimeout(() => {
+                document.body.classList.remove('opacity-0');
+                document.body.classList.add('transition-opacity', 'duration-700');
+            }, 100);
+            
+            // 初始化当前时间并设置定时器每秒更新
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+        });
+    </script>
+</body>
+</html>
+    
